@@ -1,0 +1,105 @@
+---
+title: "QSIDE Conference"
+author: "Divyalakshmi Varadha Rajan Prem Sudha"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      message = FALSE, 
+                      warning = FALSE,
+                      comment = NA)
+```
+
+**Setting up:**
+
+Load `tidyverse`, which includes `dplyr`, `ggplot2`, `tidyr`, and other packages.
+
+```{r echo=TRUE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+```
+
+Read in the file, and store its data in a new variable named.
+
+```{r}
+economy <- read.csv("table_12.csv", header= TRUE, sep = ",")
+```
+
+```{r}
+glimpse(economy)
+```
+
+
+```{r}
+economy <- na.omit(economy)
+```
+**Problem Statement: 
+
+```{r}
+head(economy)
+```
+
+
+
+```{r}
+economy2 <- economy %>% 
+  pivot_longer(cols = starts_with("count_"), names_to = "race", values_to = "count")
+
+economy2
+races = c("American Indian", "Asian", "Black", "Hispanic", "White")
+
+economy2 %>%
+  filter(race != "count_pooled") %>% 
+  ggplot(x= race, y = count) + geom_boxplot(aes(x= race, y= count, fill = race)) + labs(x= "Race", y = "Parent household income", title = "Parental income across different races", fill="Race") +
+  scale_x_discrete(labels=races) +
+  scale_fill_discrete(labels=races) +
+  scale_y_log10(breaks=c(1000, 10000, 100000), labels=c("$1,000", "$10,000", "$100,000"))
+
+
+```
+
+```{r}
+economy3 <- economy %>% 
+  pivot_longer(cols = starts_with("kid_college"), names_to = "race3", values_to = "count_kid_col")
+economy3
+economy3 %>%
+  ggplot(aes(y=count_kid_col)) + 
+  geom_boxplot(aes(fill = race3)) +
+  labs(x= "Children of different races in College", y = "Count", title = "Number of children of different races in College.")
+
+race.gender = c("Black girls", "Black boys", "White girls", "White boys")
+
+economy3 %>%
+  ggplot(aes(x = par_pctile, y=count_kid_col)) + 
+  geom_line(aes(color = race3, linetype=race3), size=0.5) +
+  scale_color_manual(values=c("orange", "orange", "blue", "blue"), labels=race.gender) +
+  scale_linetype_manual(values=c("solid", "dashed", "solid", "dashed"), labels=race.gender) +
+  labs(x= "Income percentile", y = "Percent going to college", title = "Percent of kids going to college from different races and genders", color="Race/gender", linetype = "Race/gender")
+  
+  
+
+```
+
+
+```{r}
+economy4 <- economy %>% 
+  pivot_longer(cols = starts_with("kid_jail"), names_to = "race4", values_to = "percent_kid_jail") %>% 
+  mutate(count_kid_jail = ifelse(race4 %in% c("kid_jail_black_female", "kid_jail_black_male"), 
+                                 count_black_pooled, count_white_pooled) * percent_kid_jail * 0.005) %>% 
+  # the 0.005 above is accounting for the percent being out of 100, and a single gender representing 0.5 of the population
+  select(race4, percent_kid_jail, count_kid_jail) %>% 
+  group_by(race4) %>% 
+  summarize(total = sum(count_kid_jail))
+economy4
+economy4 %>%
+  ggplot(aes(x=race4, y = total)) + geom_col(aes(fill = race4, alpha =race4)) +
+  labs(x= "Race and gender", y = "Number of children", title = "Number of incarcerated children in the US", 
+       fill="Race/gender", alpha="Race/gender") +
+  scale_fill_manual(labels=race.gender, values=c("orange", "orange", "blue", "blue")) +
+  scale_alpha_manual(labels=race.gender, values=c(0.25, 1, 0.25, 1)) +
+  scale_x_discrete(labels=race.gender) +
+  scale_y_continuous(breaks=c(0, 50000, 100000), labels=c(0, "50,000", "100,000"))
+```
+
